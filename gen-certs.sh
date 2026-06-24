@@ -5,7 +5,7 @@ DOMAIN="${1:-localhost}"
 CERTS_DIR="$(cd "$(dirname "$0")" && pwd)/certs"
 mkdir -p "$CERTS_DIR"
 
-echo "→ Генерируем сертификат для: $DOMAIN"
+echo "Генерируем сертификат для: $DOMAIN"
 
 openssl req -x509 \
     -nodes -days 365 -newkey rsa:2048 \
@@ -15,4 +15,4 @@ openssl req -x509 \
     -addext "subjectAltName=DNS:$DOMAIN,DNS:localhost,IP:127.0.0.1"
 
 chmod 600 "$CERTS_DIR/server.key"
-echo "✓ Сертификат готов: $CERTS_DIR/"
+echo "Сертификат готов: $CERTS_DIR/"
