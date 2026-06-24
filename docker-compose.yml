@@ -1,0 +1,70 @@
+version: '3.9'
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - app_net
+  backend:
+    image: kennethreitz/httpbin
+    command: gunicorn -b 0.0.0.0:8080 httpbin:app -k gevent
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app_net
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app_net
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - app_net
+volumes:
+  postgres_data:
+networks:
+  app_net:
+    driver: bridge
